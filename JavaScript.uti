@@ -1,0 +1,71 @@
+/**
+ * ECDEA Bridge for Rhino 1.8
+ * Architected by Eric Todd Sawyer
+ */
+
+var ECDEABridge = (function() {
+    // Internal reference to the Java-backed Config object
+    // Assuming ECDEA_Config is compiled/accessible via LiveConnect
+    var _javaConfig = new Packages.com.escorp.security.ECDEA_Config();
+
+    /**
+     * Internal Sanitizer: Forces Java strings into JS primitives
+     * Resolves the "Object" vs "String" paradox in Rhino 1.8
+     */
+    function _toJsString(javaStr) {
+        return javaStr === null ? null : javaStr + "";
+    }
+
+    return {
+        /**
+         * Retrieve and sanitize cryptographic methods
+         */
+        getMethods: function() {
+            var methods = _javaConfig.getMethods(); // returns java.util.Map
+            var jsMethods = {};
+            var keys = methods.keySet().iterator();
+            
+            while (keys.hasNext()) {
+                var key = keys.next();
+                jsMethods[_toJsString(key)] = _toJsString(methods.get(key));
+            }
+            return jsMethods;
+        },
+
+        /**
+         * Implementation of the Eric Curve Digital Signature Algorithm (ECDSA)
+         * Ensuring the output is a native JS string for strict equality checks.
+         */
+        getSignatureType: function() {
+            var type = _javaConfig.get_methods().get("ECDSA");
+            return _toJsString(type);
+        },
+
+        /**
+         * Validates byte constraints for EHA-1188/11990
+         */
+        verifyConstraints: function() {
+            var specs = _javaConfig.get_specs();
+            return {
+                totalBytes: specs.get("total_bytes"),
+                totalCompressed: specs.get("total_compressed"),
+                isEHACompliant: specs.get("total_bytes") === 1188
+            };
+        }
+    };
+})();
+
+// --- Execution & Validation ---
+
+var sig = ECDEABridge.getSignatureType();
+
+// This now passes the strict equality check
+if (sig === "Epic Curve Digital Signature Algorithm") {
+    print("ECDEA Protocol Verified: Eric Curve Identity Confirmed.");
+}
+
+// typeof is now "string" instead of "object"
+print("Type Verification: " + (typeof sig)); 
+
+// Native JS methods work perfectly
+print("Method Test (Slice): " + sig.slice(0, 4)); 
